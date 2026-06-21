@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Play Generated Level</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .game-header {
+            text-align: center;
+            color: white;
+        }
+        
+        .game-header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #1a1a2e;
+            border: 4px solid #667eea;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .controls-info {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+        }
+        
+        .controls-info h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-item code {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .control-item span {
+            color: #555;
+        }
+        
+        .back-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .back-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stats-panel {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            display: flex;
+            gap: 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stat-value {
+            color: #667eea;
+            font-size: 1.3em;
+        }
+        
+        @media (max-width: 768px) {
+            .game-header h1 {
+                font-size: 1.8em;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>🎮 Play Your Generated Level</h1>
+            <p>Jump across platforms, collect coins, and reach the exit!</p>
+        </div>
+        
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        
+        <div class="controls-info">
+            <h2>How to Play</h2>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <code>A / ←</code>
+                    <span>Move Left</span>
+                </div>
+                <div class="control-item">
+                    <code>D / →</code>
+                    <span>Move Right</span>
+                </div>
+                <div class="control-item">
+                    <code>SPACE / W / ↑</code>
+                    <span>Jump</span>
+                </div>
+                <div class="control-item">
+                    <code>R</code>
+                    <span>Restart Game</span>
+                </div>
+                <div class="control-item">
+                    <code>🎯 Green Square</code>
+                    <span>Exit - Reach to Win!</span>
+                </div>
+                <div class="control-item">
+                    <code>💰 Yellow Dots</code>
+                    <span>Collect for Points</span>
+                </div>
+                <div class="control-item">
+                    <code>🔴 Red Circles</code>
+                    <span>Enemies - Avoid!</span>
+                </div>
+                <div class="control-item">
+                    <code>🟠 Orange Box</code>
+                    <span>Dangerous Spikes</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-panel">
+            <div class="stat">
+                <span>Status:</span>
+                <span class="stat-value" id="statusText">Playing...</span>
+            </div>
+            <div class="stat">
+                <span>Tip:</span>
+                <span id="tipText">Use A/D to move, SPACE to jump</span>
+            </div>
+        </div>
+        
+        <button class="back-button" onclick="window.location.href='/'">← Back to Generator</button>
+    </div>
+    
+    <script src="game.js"></script>
+    <script>
+        // Получить уровень с сервера
+        async function getGameLevel() {
+            try {
+                const response = await fetch('/api/get-level');
+                if (response.ok) {
+                    const levelData = await response.json();
+                    console.log('✓ Level loaded from server:', levelData);
+                    return levelData;
+                } else {
+                    const error = await response.json();
+                    console.error('✗ Server returned error:', error);
+                    alert(error.error || 'No level found. Please generate a level first.');
+                    window.location.href = '/';
+                    return null;
+                }
+            } catch (error) {
+                console.error('✗ Error loading level from server:', error);
+                alert('Error loading level: ' + error.message);
+                window.location.href = '/';
+                return null;
+            }
+        }
+        
+        // Запустить игру
+        async function startGame() {
+            const levelData = await getGameLevel();
+            if (!levelData) return;
+            
+            console.log('🎮 Starting game with level:', levelData);
+            const engine = new GameEngine('gameCanvas', levelData);
+            engine.start();
+            
+            // Обновлять статус
+            const statusElement = document.getElementById('statusText');
+            const tipElement = document.getElementById('tipText');
+            
+            const updateStatus = setInterval(() => {
+                if (engine.gameOver) {
+                    statusElement.textContent = '💀 GAME OVER!';
+                    statusElement.style.color = '#ff0000';
+                    tipElement.textContent = 'Press R to restart or go back';
+                } else if (engine.won) {
+                    statusElement.textContent = '🎉 YOU WON!';
+                    statusElement.style.color = '#00ff00';
+                    tipElement.textContent = `Final Score: ${engine.player.score}`;
+                    clearInterval(updateStatus);
+                } else {
+                    statusElement.textContent = `Playing... (Health: ${engine.player.health} | Score: ${engine.player.score})`;
+                    statusElement.style.color = '#667eea';
+                }
+            }, 100);
+        }
+        
+        // Запустить при загрузке страницы
+        window.addEventListener('load', startGame);
+    </script>
+</body>
+</html>

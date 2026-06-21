@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level Generator - AI Game Level Creator</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Three.js для 3D визуализации -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Диагностика загрузки Three.js -->
+    <script>
+        console.log('📦 [HEAD] Checking Three.js libraries during page load...');
+        
+        // Check 1: Initial check
+        console.log('✓ window.THREE at page start:', typeof window.THREE);
+        console.log('✓ window.THREE.OrbitControls at page start:', typeof window.THREE?.OrbitControls);
+        
+        // Wait for scripts to load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('=== [DOMContentLoaded] ===');
+            console.log('✓ THREE available:', typeof window.THREE !== 'undefined');
+            console.log('✓ THREE.Scene available:', typeof window.THREE?.Scene !== 'undefined');
+            console.log('✓ THREE.OrbitControls available:', typeof window.THREE?.OrbitControls !== 'undefined');
+            
+            if (window.THREE) {
+                console.log('THREE version/build:', window.THREE.REVISION || 'unknown');
+                // List some THREE properties
+                const threeKeys = Object.keys(window.THREE).slice(0, 20);
+                console.log('Sample THREE properties:', threeKeys.join(', '));
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1>🎮 Level Generator</h1>
+                <p>Transform your photos into game levels using AI</p>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="card upload-card">
+                <h2>📸 Upload Your Image</h2>
+                <div class="upload-area" id="uploadArea">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>Drop your image here or click to select</p>
+                    <span class="file-info">Supported: PNG, JPG, JPEG</span>
+                    <input type="file" id="fileInput" accept="image/*" hidden>
+                </div>
+            </div>
+
+            <div class="card preview-card">
+                <h2>👁️ Image Preview</h2>
+                <div class="preview-container" id="previewContainer">
+                    <div class="placeholder">No image selected</div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="generateBtn" disabled>
+                <span class="btn-icon">🎨</span>
+                Generate 3D Level from Photo
+            </button>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="autoRotateBtn" disabled title="Toggle auto-rotation">
+                    <span class="btn-icon">🔄</span>
+                    Auto Rotate
+                </button>
+                <button class="btn btn-secondary" id="resetCameraBtn" disabled title="Reset camera position">
+                    <span class="btn-icon">↺</span>
+                    Reset View
+                </button>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-3d" id="export3dObjBtn" disabled title="Export to OBJ format">
+                    <span class="btn-icon">📦</span>
+                    Export OBJ
+                </button>
+                <button class="btn btn-3d" id="export3dGltfBtn" disabled title="Export to GLTF format">
+                    <span class="btn-icon">🎨</span>
+                    Export GLTF
+                </button>
+                <button class="btn btn-3d" id="export3dPackageBtn" disabled title="Export full 3D package">
+                    <span class="btn-icon">📦</span>
+                    Export Package
+                </button>
+            </div>
+
+            <div id="loadingSpinner" class="spinner" style="display: none;"></div>
+
+            <div id="resultCard" class="card result-card" style="display: none;">
+                <div class="result-header">
+                    <h2>🎨 Your Generated 3D Model</h2>
+                    <span class="status-badge" id="statusBadge">✓ v3.0-Direct3D</span>
+                </div>
+                
+                <div class="result-info">
+                    <div class="info-box">
+                        <span class="label">3D Meshes:</span>
+                        <span class="value" id="meshCount">0</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Vertices:</span>
+                        <span class="value" id="vertexCount">0</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Triangles:</span>
+                        <span class="value" id="triangleCount">0</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Platforms:</span>
+                        <span class="value" id="platformCount">0</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Objects:</span>
+                        <span class="value" id="objectCount">0</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Volume:</span>
+                        <span class="value" id="volumeSize">0</span>
+                    </div>
+                </div>
+
+                <!-- 3D Viewer -->
+                <div class="viewer-section">
+                    <h3>🌐 Interactive 3D Viewer</h3>
+                    <div class="viewer-container">
+                        <div id="canvas3d" class="canvas-3d"></div>
+                        <div class="viewer-controls">
+                            <p class="hint">💡 Click to select objects • Drag to rotate • Scroll to zoom</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- World Model Controls -->
+                <div class="viewer-section">
+                    <h3>🧠 World Model (Yan-style)</h3>
+                    <div class="viewer-controls world-controls">
+                        <button class="btn btn-secondary" id="worldInitBtn">Init World Session</button>
+                        <button class="btn btn-secondary" id="worldStepForwardBtn" disabled>Step Forward</button>
+                        <button class="btn btn-secondary" id="worldTurnLeftBtn" disabled>Turn Left</button>
+                        <button class="btn btn-secondary" id="worldTurnRightBtn" disabled>Turn Right</button>
+                        <select id="worldStyleSelect" class="btn btn-secondary">
+                            <option value="neutral">Style: Neutral</option>
+                            <option value="warm">Style: Warm</option>
+                            <option value="cool">Style: Cool</option>
+                            <option value="mono">Style: Mono</option>
+                        </select>
+                        <button class="btn btn-secondary" id="worldApplyStyleBtn" disabled>Apply Style</button>
+                        <button class="btn btn-secondary" id="worldAddObjectBtn" disabled>Add Object</button>
+                        <input class="world-input" id="worldSessionInput" placeholder="Session ID" />
+                        <button class="btn btn-secondary" id="worldSaveBtn" disabled>Save Session</button>
+                        <button class="btn btn-secondary" id="worldLoadBtn">Load Session</button>
+                    </div>
+                    <p class="hint">⚙️ Yan-Sim step • Yan-Edit structure/style • Live world state update</p>
+                </div>
+
+                <!-- Object Details Panel -->
+                <div id="objectPanel" class="object-panel" style="display: none;">
+                    <h3>🎯 Selected Object Details</h3>
+                    <div class="object-details">
+                        <p><strong>Type:</strong> <span id="objType">—</span></p>
+                        <p><strong>Index:</strong> <span id="objIndex">—</span></p>
+                        <p><strong>Position:</strong> <span id="objPos">—</span></p>
+                        <p><strong>Material Color:</strong> <span id="objColor">—</span></p>
+                    </div>
+                </div>
+
+                <div class="json-section">
+                    <h3>📄 Level Data (JSON)</h3>
+                    <div class="json-container">
+                        <pre id="jsonPreview"></pre>
+                    </div>
+                    <button class="btn btn-secondary" id="downloadBtn">
+                        <span class="btn-icon">⬇️</span>
+                        Download Report
+                    </button>
+                </div>
+            </div>
+
+            <div id="errorCard" class="card error-card" style="display: none;">
+                <h3>❌ Error</h3>
+                <p id="errorMessage"></p>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Level Generator v2.0 | Powered by AI & .NET</p>
+        </footer>
+    </div>
+
+    <!-- Load viewer-3d.js first with error handling -->
+    <script src="viewer-3d.js?t=2026060201" defer onerror="console.error('❌ Failed to load viewer-3d.js')"></script>
+    
+    <!-- Load app.js after viewer-3d.js -->
+    <script src="app.js?t=2026060201" defer onerror="console.error('❌ Failed to load app.js')"></script>
+    
+    <!-- Final diagnostic script -->
+    <script>
+        console.log('=== Final diagnostic on page load ===');
+        window.addEventListener('load', () => {
+            console.log('✓ Page load complete');
+            console.log('✓ THREE:', typeof window.THREE);
+            console.log('✓ THREE.OrbitControls:', typeof window.THREE?.OrbitControls);
+            console.log('✓ Viewer3D:', typeof window.Viewer3D);
+        });
+    </script>
+</body>
+</html>
