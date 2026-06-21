@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Three.js CDN Test</title>
+    <style>
+        body { font-family: monospace; background: #222; color: #0f0; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; background: #111; border-left: 3px solid #0f0; }
+        .pass { border-left-color: #0f0; color: #0f0; }
+        .fail { border-left-color: #f00; color: #f00; }
+        .info { color: #0ff; }
+    </style>
+</head>
+<body>
+    <h1>Three.js CDN Diagnostic</h1>
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+
+        function test(name, condition) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (condition ? 'pass' : 'fail');
+            div.textContent = (condition ? '✓' : '✗') + ' ' + name;
+            log.appendChild(div);
+            console.log((condition ? '✓' : '✗'), name);
+            return condition;
+        }
+
+        function info(msg) {
+            const div = document.createElement('div');
+            div.className = 'test info';
+            div.textContent = 'ℹ ' + msg;
+            log.appendChild(div);
+            console.log('ℹ', msg);
+        }
+
+        // Stage 1: Check globals before loading
+        info('=== STAGE 1: Before CDN Load ===');
+        test('window object exists', window !== undefined);
+        test('THREE not loaded yet', typeof window.THREE === 'undefined');
+
+        // Stage 2: Load Three.js
+        info('=== STAGE 2: Loading Three.js from CDN ===');
+        const script1 = document.createElement('script');
+        script1.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js';
+        script1.onload = () => {
+            info('Three.js script onload fired');
+            setTimeout(checkAfterThree, 100);
+        };
+        script1.onerror = () => {
+            test('Three.js loaded', false);
+            info('Failed to load Three.js from CDN');
+        };
+        document.head.appendChild(script1);
+
+        function checkAfterThree() {
+            info('=== STAGE 3: After Three.js Load ===');
+            test('THREE global exists', typeof window.THREE !== 'undefined');
+            if (typeof window.THREE !== 'undefined') {
+                info('THREE.REVISION: ' + window.THREE.REVISION);
+                test('THREE.WebGLRenderer available', typeof window.THREE.WebGLRenderer !== 'undefined');
+                test('THREE.Scene available', typeof window.THREE.Scene !== 'undefined');
+                test('THREE.OrbitControls NOT loaded yet', typeof window.THREE.OrbitControls === 'undefined');
+
+                // Stage 3: Load OrbitControls
+                info('=== STAGE 4: Loading OrbitControls ===');
+                const script2 = document.createElement('script');
+                script2.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+                script2.onload = () => {
+                    info('OrbitControls script onload fired');
+                    setTimeout(checkAfterControls, 100);
+                };
+                script2.onerror = () => {
+                    test('OrbitControls loaded', false);
+                    info('Failed to load OrbitControls from CDN');
+                };
+                document.head.appendChild(script2);
+            }
+        }
+
+        function checkAfterControls() {
+            info('=== STAGE 5: After OrbitControls Load ===');
+            test('THREE.OrbitControls available', typeof window.THREE.OrbitControls !== 'undefined');
+            
+            if (typeof window.THREE !== 'undefined' && typeof window.THREE.OrbitControls !== 'undefined') {
+                info('✓✓✓ All Three.js libraries loaded successfully! ✓✓✓');
+                info('Ready to use Viewer3D');
+                
+                // Try to create a simple scene
+                try {
+                    const scene = new window.THREE.Scene();
+                    test('Can create THREE.Scene', true);
+                } catch (e) {
+                    test('Can create THREE.Scene', false);
+                    info('Error: ' + e.message);
+                }
+            } else {
+                info('✗✗✗ Some libraries are missing! ✗✗✗');
+            }
+        }
+    </script>
+</body>
+</html>

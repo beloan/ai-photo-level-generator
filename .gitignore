@@ -1,0 +1,29 @@
+# .NET build output
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.iml
+
+# Python depth service (heavy: torch/transformers ~1GB) — recreate via requirements.txt
+.venv/
+ai_service/.venv/
+ai_service/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Runtime artifacts / logs
+*.log
+output.png
+input.png
+input*.png
+level.json
+
+# Editor / OS
+*.swp
+*.swo
+*~
+.DS_Store
+.claude/
